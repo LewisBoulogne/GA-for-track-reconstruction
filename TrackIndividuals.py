@@ -26,17 +26,17 @@ hit = (x, y) e.g h1 = (0, 1), h2 = (0, 0)
 """
 
 # all variable parameters 
-tracks = 2
-layers = 5
-population_size = 20
-max_gen = 1000
+tracks = 3
+layers = 4
+population_size = tracks * 10
+max_gen = 100
 os_amount = int(population_size/4)
 fit_size = int(population_size/2)
 
 # storing data to plot evolution
 max_pop_score = [0]
 mean_pop_score =[0]
-best_track = [0]
+best_track = [[0, 0]]
 
 
 # creating a randomly initialized population
@@ -79,29 +79,47 @@ def angle_score(track):
     return a_score
 
 
+
+def uniq_score(track, population):
+    u_score = 0
+    for ind in population:
+        if track == ind:
+            u_score -= 1
+    return u_score
+
+
+def get_score(track, population):
+    return (angle_score(track)) + (2*uniq_score(track, population))
+
+
 # extracting the fittest indivduals of the population
 def get_fit(population):
     global best_track
     scores = []
     # storing the scores of all tracks
     for ind1 in population:
-        ind_score = angle_score(ind1)
+        ind_score = get_score(ind1, population)
         scores.append(ind_score)
-        # finding the track with the best score to track evolution
-        if ind_score > best_track[0]:
-            best_track = [ind_score, ind1]
     av_score = np.mean(scores)
     fittest = []
-    # fittest are all tracks that have a score greater the mean score
-    for ind2 in population:
-        if angle_score(ind2) >= av_score:
-            fittest.append(ind2)
-    fittest.sort()
-    # controlling population size
-    if len(fittest) > fit_size:
-        for delete in range(int(len(fittest) - (len(population)/2))):
-            index = randint(0, len(fittest)-1) #remove a random ind from the fittest
-            fittest.pop(0) #index 0 -> remove least fit from fittest
+    for i in population:
+        fittest.append([get_score(i, population), i])
+    fittest.sort(key = lambda tup: tup[0])
+    # ckeeping fittest of the population
+    while len(fittest) > fit_size:
+          fittest.pop(0) #index 0 -> remove least fit from fittest
+    # keeping best tracks
+    new_best = []
+    for best in best_track:
+        for fit in fittest:
+            if fit[1] != best[1] and fit[0] >= best[0] and fit not in new_best:
+                new_best.append(fit)
+    new_best.sort(key=lambda tup:tup[0])
+    for b in new_best:
+        best_track.append(b)
+    best_track.sort(key=lambda tup: tup[0])
+    while len(best_track) > tracks:
+        best_track.pop(0)
     # keeping track of evolution
     max_pop_score.append(max(scores))
     mean_pop_score.append(av_score)
@@ -147,7 +165,8 @@ def main():
     while generation < max_gen:
         pop = get_next(pop)
         generation += 1
-    print(best_track)
+    for track in best_track:
+        print(track)
     plt.plot(max_pop_score)
     plt.plot(mean_pop_score)
     plt.show()

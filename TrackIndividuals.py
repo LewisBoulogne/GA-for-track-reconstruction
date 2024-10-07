@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 """
-Simplified case:
+Example case:
 
 2 tracks 5 layers
 
@@ -29,7 +29,7 @@ hit = (x, y) e.g h1 = (0, 1), h2 = (0, 0)
 tracks = 3
 layers = 4
 population_size = tracks * 10
-max_gen = 100
+max_gen = 1000
 os_amount = int(population_size/4)
 fit_size = int(population_size/2)
 
@@ -89,7 +89,7 @@ def uniq_score(track, population):
 
 
 def get_score(track, population):
-    return (angle_score(track)) + (2*uniq_score(track, population))
+    return (angle_score(track)) + (0.1*uniq_score(track, population))
 
 
 # extracting the fittest indivduals of the population
@@ -103,12 +103,12 @@ def get_fit(population):
     av_score = np.mean(scores)
     fittest = []
     for i in population:
-        fittest.append([get_score(i, population), i])
-    fittest.sort(key = lambda tup: tup[0])
-    # ckeeping fittest of the population
+        if get_score(i, population) >= av_score:
+            fittest.append([get_score(i, population), i])
+    fittest.sort(key=lambda tup:tup[0], reverse=False)
     while len(fittest) > fit_size:
-          fittest.pop(0) #index 0 -> remove least fit from fittest
-    # keeping best tracks
+        fittest.pop(0)
+    # uploading best tracks
     new_best = []
     for best in best_track:
         for fit in fittest:
@@ -169,7 +169,11 @@ def main():
         print(track)
     plt.plot(max_pop_score)
     plt.plot(mean_pop_score)
+    plt.ylabel("Score")
+    plt.xlabel("Generations")
+    plt.title("Mean Score and Max Score")
     plt.show()
 
 
 main()
+

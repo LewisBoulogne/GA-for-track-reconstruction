@@ -2,7 +2,7 @@ import trackhhl.toy.simple_generator as toy
 import matplotlib.pyplot as plt
 import numpy as np
 
-N_MODULES = 4
+N_MODULES = 5
 LX = float("+inf")
 LY = float("+inf")
 Z_SPACING = 1.0
@@ -19,7 +19,7 @@ generator = toy.SimpleGenerator(
     theta_max=np.pi/6
 )
 
-N_PARTICLES = 4
+N_PARTICLES = 3
 event = generator.generate_event(N_PARTICLES)
 
 

@@ -3,6 +3,7 @@ from random import randint
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import trackhhl.toy.simple_generator as toy
+import time
 
 
 
@@ -30,28 +31,20 @@ class agent:
             this_layer = []
             for hit1 in event.modules[i].hits:
                 for hit2 in event.modules[i + 1].hits:
-                    this_layer.append(([hit1.x, hit1.y, hit1.z], [hit2.x, hit2.y, hit2.z]))
+                    this_layer.append([[hit1.x, hit1.y, hit1.z], [hit2.x, hit2.y, hit2.z]])
             seg.append(this_layer)
         return seg
-
-    def plot_segments(self, array):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        for layer in array:
-            for ((x1, y1, z1), (x2, y2, z2)) in layer:
-                ax.plot([x1, x2], [y1, y2], [z1, z2], 'ro-')  
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('3D Segments')
-        plt.grid(True)
-        plt.show()
 
     def plot_tracks(self, array, title):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        for ((x1, y1, z1), (x2, y2, z2)) in array:
-            ax.plot([x1, x2], [y1, y2], [z1, z2], 'ro-')  
+        if len(array) > 1:
+            for track in array:
+                for i in range(len(track) - 1):
+                    ax.plot([track[i][0], track[i + 1][0]], [track[i][1], track[i + 1][1]], [track[i][2], track[i + 1][2]], 'ro-')
+        if len(array) == 1:
+            for i in range(len(array) - 1):
+                    ax.plot([array[i][0], array[i + 1][0]], [array[i][1], array[i + 1][1]], [array[i][2], array[i + 1][2]], 'ro-')
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
@@ -79,7 +72,7 @@ class agent:
         for anchor in array[0]:
             for segment in array[1]:
                 if self.is_straight(anchor, segment):
-                    candidates.append([anchor[0], segment[1]])
+                    candidates.append(anchor + segment)
         return candidates
 
     def find_tracks(self, event):
@@ -91,9 +84,9 @@ class agent:
                 end = 3 + self.extrapolation_range
             for layer in range(3, end):
                 for hit in event.modules[layer].hits:
-                    t_x = (candidate[0][0]-hit.x)/(candidate[0][0]-candidate[1][0])
-                    t_y = (candidate[0][1]-hit.y)/(candidate[0][1]-candidate[1][1])
-                    t_z = (candidate[0][2]-hit.z)/(candidate[0][2]-candidate[1][2])
+                    t_x = (candidate[0][0]-hit.x)/(candidate[0][0]-candidate[3][0])
+                    t_y = (candidate[0][1]-hit.y)/(candidate[0][1]-candidate[3][1])
+                    t_z = (candidate[0][2]-hit.z)/(candidate[0][2]-candidate[3][2])
                     if round(t_x, self.extrapolation_uncertainty) == round(t_y, self.extrapolation_uncertainty) == round(t_z, self.extrapolation_uncertainty):
                         candidate.append([hit.x, hit.y, hit.z])
         return array
@@ -114,8 +107,9 @@ def make_event(N_MODULES, N_PARTICLES):
     ev = generator.generate_event(N_PARTICLES)
     return ev
 
+
 """
-GENTEIC ALGORITHM
+GENETIC ALGORITHM
 """
 #GA parameters:
 population_size = 10
@@ -123,42 +117,65 @@ fit_size = population_size/2
 
 max_pop_score = [0]
 mean_pop_score =[0]
-best_ind = [0, [0, 0, 0]]
+best_ind = [0, [0, 0]]
+runtimes = [0]
 
 def init(size):
     population = []
     for i in range(size):
         exp = randint(0, 10)
         rounded = randint(1, 10)
-        individual = [i, 10**(-exp), rounded]
+        individual = [10**(-exp), rounded]
         population.append(individual)
     return population
 
 def evaluate(ind):
-    score = 0
-    name = ind[0]
-    angle_window = ind[1]
-    dec_places = ind[2]
+    print("evaluating: " + str(ind))
+    angle_window, dec_places = ind
+    start_time = time.time()
     this_agent = agent(angle_window, dec_places)
     agent_tracks = this_agent.find_tracks(event)
-    if len(agent_tracks) == Particles:
-        score += 1
-    for track1 in agent_tracks:
-        if len(track1) == layers - 1:
-            score += 1
-    for t1 in agent_tracks:
-        for t2 in agent_tracks:
-            for hit1 in t1:
-                for hit2 in t2:
-                    if hit1 == hit2:
-                        score -= 1
+    end_time = time.time()
+
+    # found as many tracks as there are particles? 
+    tracks_found_score = len(agent_tracks)/PARTICLES
+    if tracks_found_score > 1:
+        tracks_found_score = 0
+
+    # how fast is the agent?
+    agent_runtime = end_time - start_time
+    runtimes.append(agent_runtime)
+    runtime_score = max(1 - agent_runtime/np.mean(runtimes), 0) 
+    # if runtime is bigger than average ratio will be negative therefore the score will be 0
+
+    # are the tracks as long as the amount of layers?
+    crosspoints = 0
+    tracks_length = []
+    for track1 in agent_tracks: 
+        tracks_length.append(len(track1))
+        # are there duplicate tracks?
+        for track2 in agent_tracks: 
+            if track1 == track2:
+                crosspoints += 1 
+    crosshits_score = max(1 - crosspoints/len(agent_tracks), 0)
+    length_score = np.mean(tracks_length)/(LAYERS-1)
+    if length_score > 1:
+        length_score = 0
+    """
+    print("n tracks found: " + str(len(agent_tracks)))
+    print("n tracks found score: " + str(tracks_found_score))
+    print("runtime score: " + str(runtime_score))
+    print("length_score: " + str(length_score))
+    print("unique tracks score: " + str(crosshits_score))
+    """
+    score = (tracks_found_score + 
+             runtime_score + 
+             length_score + 
+             crosshits_score)/4
+    
+    print("score: " + str(score))
     return score
-"""
-    for track in agent_tracks:
-        for sol in tracks_1:
-            if track == sol:
-                score += 1
-"""
+
     
 def get_fit(population):
     global best_ind
@@ -168,44 +185,56 @@ def get_fit(population):
         ind_score = evaluate(ind1)
         scores.append(ind_score)
     av_score = np.mean(scores)
+    print("av_score: " + str(av_score))
     fittest = []
     for i in population:
         this_score = evaluate(i)
-        if this_score >= av_score:
+        if this_score > av_score:
             fittest.append([this_score, i])
+            print("added to fittest: " + str(i))
+    print("n fit before: " + str(len(fittest)))
     fittest.sort(key=lambda tup:tup[0], reverse=False)
     while len(fittest) > fit_size:
+        print("pop: " + str(fittest[0]))
         fittest.pop(0)
     # uploading best track
     for fit in fittest:
             if fit[1] != best_ind[1] and fit[0] >= best_ind[0]:
+                print("NEW best individual: " + str(best_ind))
                 best_ind = fit
     # keeping track of evolution
-    max_pop_score.append(max(scores))
-    mean_pop_score.append(av_score)
     final_fittest = []
     for r in fittest:
         final_fittest.append(r[1])
     return final_fittest
 
-Particles = 5
-layers = 5
-event = make_event(layers, Particles)
+PARTICLES = 8
+LAYERS = 10
+event = make_event(LAYERS, PARTICLES)
 agent_1 = agent(1e-4, 3)
 tracks_1 = agent_1.find_tracks(event)
+#print(tracks_1)
 #agent_1.plot_tracks(tracks_1, '3D tracks')
 
 def main():
     POPULATION = init(population_size)
     GENERATION = 0
-    while GENERATION < 100:
+    while GENERATION < 20:
+        print("gen: " + str(GENERATION))
         fit = get_fit(POPULATION)
         other = init(population_size - len(fit))
+        print("n fit after: " + str(len(fit)))
+        print()
         POPULATION = fit + other
         GENERATION += 1
-    score = best_ind[0]
-    ind = best_ind[1]
-    best_agent = agent(ind[1], ind[2])
-    best_agent.plot_tracks(best_agent.find_tracks(event), '3D tracks from best agent')
+    best_agent = agent(best_ind[1][0], best_ind[1][1])
+    print()
+    print("final best: " + str(best_ind))
+    best_tracks = best_agent.find_tracks(event)
+    print(str(len(best_tracks)) + " tracks found")
+    print()
+    print(best_tracks)
+    best_agent.plot_tracks(best_tracks, '3D tracks from best agent')
 
 main()
+ 

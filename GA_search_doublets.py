@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 from random import randint
 import numpy as np
+import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 import trackhhl.toy.simple_generator as toy
 import time
+import tracemalloc
 
 
 
@@ -208,7 +210,7 @@ def get_fit(population):
         final_fittest.append(r[1])
     return final_fittest
 
-PARTICLES = 8
+PARTICLES = 5
 LAYERS = 10
 event = make_event(LAYERS, PARTICLES)
 agent_1 = agent(1e-4, 3)
@@ -216,10 +218,10 @@ tracks_1 = agent_1.find_tracks(event)
 #print(tracks_1)
 #agent_1.plot_tracks(tracks_1, '3D tracks')
 
-def main():
+def main(max_gen, population_size):
     POPULATION = init(population_size)
     GENERATION = 0
-    while GENERATION < 20:
+    while GENERATION < max_gen:
         print("gen: " + str(GENERATION))
         fit = get_fit(POPULATION)
         other = init(population_size - len(fit))
@@ -234,7 +236,7 @@ def main():
     print(str(len(best_tracks)) + " tracks found")
     print()
     print(best_tracks)
-    best_agent.plot_tracks(best_tracks, '3D tracks from best agent')
+    #best_agent.plot_tracks(best_tracks, '3D tracks from best agent')
 
-main()
- 
+main(10, 6)
+

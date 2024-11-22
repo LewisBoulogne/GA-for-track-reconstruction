@@ -222,7 +222,13 @@ def hit_purity(tracks, particles, weights):
             # track has no particle associated (i.e. it is a ghost)
             t2p[tracks[i]] = (wtp, None)
     for i in range(len(particles)):
-        wtp, nwtp = np.max(weights[:,i]), np.argmax(weights[:,i])
+        #print(weights[:,i])
+        #print(np.max(weights[:,i]))
+        if len(weights[:,i]) != 0:
+            wtp, nwtp = np.max(weights[:,i]), np.argmax(weights[:,i])
+        else:
+            wtp = 0
+            nwtp = 0
         if wtp > 0.7:
             p2t[particles[i]] = (wtp, tracks[nwtp])
         else:
@@ -374,6 +380,8 @@ def validate_clone_fraction(events_json_data, tracks_list, particle_type="long>5
     as a value in [0,1].
     '''
     eff = validate(events_json_data, tracks_list, particle_type)
+    if eff.n_reco == 0:
+        return 0
     return eff.n_clones / eff.n_reco
 
 def validate_ghost_fraction(events_json_data, tracks_list):

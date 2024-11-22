@@ -50,6 +50,7 @@ def check_best_triplets(m0, m1, m2):
         best_triplets.append((h0, h1, best_h2, best_scatter))
   return best_triplets
 
+
 def generate_compatible_triplets(module_pairs):
   compatible_triplets_trie = [None] * 26
   for m0, m1 in zip(reversed(module_pairs[2:]), reversed(module_pairs[1:-1])):
